@@ -1,38 +1,35 @@
 mod cnproc;
-
-use procfs::process::Process;
+mod process_handler;
 
 fn main() {
+    let mut handler = match process_handler::Handler::new() {
+        Ok(h) => h,
+        Err(e) => panic!("{}", e),
+    };
+
     let mut monitor = match cnproc::lib::PidMonitor::new() {
         Ok(m) => m,
         Err(e) => panic!(e.kind()),
     };
+
     match monitor.listen() {
         Ok(r) => r,
         Err(e) => panic!(e.kind()),
     }
+
     loop {
         let events = match monitor.get_events() {
             Ok(r) => r,
             Err(e) => panic!(e.kind()),
         };
-        for event in &events {
+        for event in events {
             match event {
-                cnproc::lib::PidEvent::New(v) => on_new_process(*v),
+                cnproc::lib::PidEvent::Exec(v) => match handler.on_process_start(v) {
+                    Err(e) => println!("{}", e),
+                    _ => (),
+                },
                 _ => (),
             }
         }
-    }
-}
-
-fn on_new_process(pid: i32) {
-    if let Ok(proc) = Process::new(pid) {
-        if let Ok(path) = proc.exe() {
-            println!("{}", path.to_str().unwrap())
-        } else {
-            println!("path not found")
-        }
-    } else {
-        println!("err finding process")
     }
 }
