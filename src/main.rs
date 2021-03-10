@@ -1,34 +1,65 @@
-mod cnproc;
-mod process_handler;
+use comms::IPC;
+use crossbeam_channel::{bounded, select, Receiver};
+use monitor::{Monitor, ProcessHandler};
+use package_backend::alpm_backend::{self, AlpmBackend};
+use std::{
+    env::args,
+    sync::{Arc, Mutex},
+    thread,
+};
+use store::Store;
+use tracing::{error, subscriber::set_global_default, Level};
+use tracing_subscriber::FmtSubscriber;
 
-fn main() {
-    let mut handler = match process_handler::Handler::new() {
-        Ok(h) => h,
-        Err(e) => panic!("{}", e),
+pub mod comms;
+pub mod monitor;
+pub mod package_backend;
+pub mod store;
+
+fn ctrl_channel() -> Result<Receiver<()>, ctrlc::Error> {
+    let (sender, receiver) = bounded(100);
+    ctrlc::set_handler(move || {
+        let _ = sender.send(());
+    })?;
+
+    Ok(receiver)
+}
+
+fn setup_tracing() -> Result<(), Box<dyn std::error::Error>> {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .pretty()
+        .finish();
+    set_global_default(subscriber)?;
+    Ok(())
+}
+
+#[tokio::main]
+pub async fn main() {
+    setup_tracing().unwrap();
+    init_daemon().await;
+}
+
+async fn init_daemon() {
+    let ctrl_c_channel = ctrl_channel().unwrap();
+    let store = Store::new().unwrap();
+    let alpm_backend = AlpmBackend::new("/", "/var/lib/pacman").unwrap();
+    let process_handler = Arc::new(Mutex::new(
+        ProcessHandler::new(Box::new(alpm_backend), store).unwrap(),
+    ));
+    let mut monitor = Monitor::new(process_handler.clone()).unwrap();
+
+    thread::spawn(move || monitor.event_reader());
+
+    match IPC::new("me.blusk.usagestatsd", process_handler).await {
+        Err(e) => error!("{:?}", e),
+        _ => (),
     };
-
-    let mut monitor = match cnproc::lib::PidMonitor::new() {
-        Ok(m) => m,
-        Err(e) => panic!(e.kind()),
-    };
-
-    match monitor.listen() {
-        Ok(r) => r,
-        Err(e) => panic!(e.kind()),
-    }
 
     loop {
-        let events = match monitor.get_events() {
-            Ok(r) => r,
-            Err(e) => panic!(e.kind()),
-        };
-        for event in events {
-            match event {
-                cnproc::lib::PidEvent::Exec(v) => match handler.on_process_start(v) {
-                    Err(e) => println!("{}", e),
-                    _ => (),
-                },
-                _ => (),
+        select! {
+            recv(ctrl_c_channel) -> _ => {
+                break;
             }
         }
     }

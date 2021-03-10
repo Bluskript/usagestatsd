@@ -1,0 +1,13 @@
+[Unit]
+Description=Service to monitor package usage
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+WorkingDirectory=/var/lib/usagestatsd
+ExecStart=/usr/bin/env usagestatsd
+
+[Install]
+WantedBy=multi-user.target
