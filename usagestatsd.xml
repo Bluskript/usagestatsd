@@ -1,0 +1,7 @@
+<node>
+    <interface name="me.blusk.usagestatsd">
+        <method name="GetUsageStats">
+            <arg type="a(si)" name="stats" direction="out"/>
+        </method>
+    </interface>
+ </node>

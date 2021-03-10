@@ -12,6 +12,7 @@ use tracing::{error, subscriber::set_global_default, Level};
 use tracing_subscriber::FmtSubscriber;
 
 pub mod comms;
+pub mod dbus_generated;
 pub mod monitor;
 pub mod package_backend;
 pub mod store;

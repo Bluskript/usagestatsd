@@ -35,7 +35,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn get_least_used(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn get_least_used(&mut self) -> Result<Vec<(String, u64)>, Box<dyn std::error::Error>> {
         let mut v: Vec<_> = self
             .last_opened_tree
             .iter()
@@ -49,7 +49,6 @@ impl Store {
             .collect();
         v.sort_by_key(|p| p.1);
         v.reverse();
-        debug!("{:?}", v);
-        Ok(())
+        Ok(v)
     }
 }
