@@ -36,9 +36,9 @@ impl IPC {
         let s = store.clone();
         let get_usage_stats = {
             move |mut ctx: Context, _cr: &mut Crossroads, _args: ()| {
-                let sss = s.clone();
+                let ss = s.clone();
                 async move {
-                    match sss.lock() {
+                    match ss.lock() {
                         Ok(mut store) => match store.get_least_used() {
                             Ok(least_used) => ctx.reply(Ok((least_used,))),
                             Err(_e) => {
