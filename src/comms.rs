@@ -1,7 +1,7 @@
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus::nonblock::SyncConnection;
-use dbus_crossroads::{Crossroads, MethodErr};
+use dbus_crossroads::{Context, Crossroads, MethodErr};
 use dbus_tokio::connection;
 use std::sync::{Arc, Mutex};
 use tokio;
@@ -33,24 +33,23 @@ impl IPC {
                 tokio::spawn(x);
             }),
         )));
-        let s = Arc::clone(&store);
-        let iface_token = cr.register(name, move |b| {
-            b.method_with_cr_async(
-                "GetUsageStats",
-                (),
-                ("stats",),
-                |mut ctx, _cr, _args: ()| async move {
-                    match s.lock() {
-                        Ok(mut store) => match store.get_least_used() {
-                            Ok(least_used) => ctx.reply(Ok(("Test",))),
-                            Err(e) => {
-                                ctx.reply(Err(MethodErr::failed("unable to get usage stats")))
-                            }
-                        },
+        let s = store.clone();
+        let get_usage_stats = {
+            let ss = s.clone();
+            move |mut ctx: Context, _cr: &mut Crossroads, _args: ()| {
+                let sss = ss.clone();
+                async move {
+                    match sss.lock().unwrap().get_least_used() {
+                        Ok(least_used) => ctx.reply(Ok(("Test",))),
                         Err(e) => ctx.reply(Err(MethodErr::failed("unable to get usage stats"))),
                     }
-                },
-            );
+                }
+            }
+        };
+
+        let iface_token = cr.register(name, move |b| {
+            let s = Arc::clone(&store);
+            b.method_with_cr_async("GetUsageStats", (), ("stats",), get_usage_stats);
         });
 
         cr.insert("/usagestats", &[iface_token], 0);

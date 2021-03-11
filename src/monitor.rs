@@ -14,7 +14,7 @@ pub struct Monitor {
 }
 
 pub struct ProcessHandler {
-    store: Store,
+    store: Arc<Store>,
     file_owners: HashMap<String, String>,
     used_packages: HashSet<String>,
     package_backend: Box<dyn PackageBackend + Send>,
@@ -50,7 +50,7 @@ impl Monitor {
 impl ProcessHandler {
     pub fn new(
         package_backend: Box<dyn PackageBackend + Send>,
-        store: Store,
+        store: Arc<Store>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(ProcessHandler {
             file_owners: HashMap::new(),

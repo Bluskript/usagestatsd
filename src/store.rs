@@ -4,7 +4,6 @@ use std::{
 };
 
 use sled::{self, Config};
-use tracing::debug;
 
 pub struct Store {
     db: sled::Db,

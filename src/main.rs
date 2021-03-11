@@ -1,9 +1,8 @@
 use comms::IPC;
 use crossbeam_channel::{bounded, select, Receiver};
 use monitor::{Monitor, ProcessHandler};
-use package_backend::alpm_backend::{self, AlpmBackend};
+use package_backend::alpm_backend::AlpmBackend;
 use std::{
-    env::args,
     sync::{Arc, Mutex},
     thread,
 };
@@ -12,7 +11,6 @@ use tracing::{error, subscriber::set_global_default, Level};
 use tracing_subscriber::FmtSubscriber;
 
 pub mod comms;
-pub mod dbus_generated;
 pub mod monitor;
 pub mod package_backend;
 pub mod store;
@@ -43,16 +41,16 @@ pub async fn main() {
 
 async fn init_daemon() {
     let ctrl_c_channel = ctrl_channel().unwrap();
-    let store = Store::new().unwrap();
+    let store = Arc::new(Store::new().unwrap());
     let alpm_backend = AlpmBackend::new("/", "/var/lib/pacman").unwrap();
     let process_handler = Arc::new(Mutex::new(
-        ProcessHandler::new(Box::new(alpm_backend), store).unwrap(),
+        ProcessHandler::new(Box::new(alpm_backend), store.clone()).unwrap(),
     ));
     let mut monitor = Monitor::new(process_handler.clone()).unwrap();
 
     thread::spawn(move || monitor.event_reader());
 
-    match IPC::new("me.blusk.usagestatsd", process_handler).await {
+    match IPC::new("me.blusk.usagestatsd", store).await {
         Err(e) => error!("{:?}", e),
         _ => (),
     };
