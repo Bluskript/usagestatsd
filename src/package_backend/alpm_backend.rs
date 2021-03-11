@@ -15,7 +15,7 @@ impl AlpmBackend {
     /// * `path` the path where pacman is located
     pub fn new(root: &str, path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(AlpmBackend {
-            alpm: Alpm::new("/", "/var/lib/pacman/")?,
+            alpm: Alpm::new(root, path)?,
         })
     }
 }

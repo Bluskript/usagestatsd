@@ -41,18 +41,17 @@ impl IPC {
                     match sss.lock() {
                         Ok(mut store) => match store.get_least_used() {
                             Ok(least_used) => ctx.reply(Ok((least_used,))),
-                            Err(e) => {
+                            Err(_e) => {
                                 ctx.reply(Err(MethodErr::failed("unable to get usage stats")))
                             }
                         },
-                        Err(e) => ctx.reply(Err(MethodErr::failed("unable to get usage stats"))),
+                        Err(_e) => ctx.reply(Err(MethodErr::failed("unable to get usage stats"))),
                     }
                 }
             }
         };
 
         let iface_token = cr.register(name, move |b| {
-            let s = Arc::clone(&store);
             b.method_with_cr_async("GetUsageStats", (), ("stats",), get_usage_stats);
         });
 
