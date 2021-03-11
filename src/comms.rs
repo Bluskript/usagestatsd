@@ -35,12 +35,16 @@ impl IPC {
         )));
         let s = store.clone();
         let get_usage_stats = {
-            let ss = s.clone();
             move |mut ctx: Context, _cr: &mut Crossroads, _args: ()| {
-                let sss = ss.clone();
+                let sss = s.clone();
                 async move {
-                    match sss.lock().unwrap().get_least_used() {
-                        Ok(least_used) => ctx.reply(Ok(("Test",))),
+                    match sss.lock() {
+                        Ok(mut store) => match store.get_least_used() {
+                            Ok(least_used) => ctx.reply(Ok((least_used,))),
+                            Err(e) => {
+                                ctx.reply(Err(MethodErr::failed("unable to get usage stats")))
+                            }
+                        },
                         Err(e) => ctx.reply(Err(MethodErr::failed("unable to get usage stats"))),
                     }
                 }
