@@ -14,7 +14,7 @@ pub struct Monitor {
 }
 
 pub struct ProcessHandler {
-    store: Arc<Store>,
+    store: Arc<Mutex<Store>>,
     file_owners: HashMap<String, String>,
     used_packages: HashSet<String>,
     package_backend: Box<dyn PackageBackend + Send>,
@@ -50,7 +50,7 @@ impl Monitor {
 impl ProcessHandler {
     pub fn new(
         package_backend: Box<dyn PackageBackend + Send>,
-        store: Arc<Store>,
+        store: Arc<Mutex<Store>>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(ProcessHandler {
             file_owners: HashMap::new(),
@@ -75,9 +75,12 @@ impl ProcessHandler {
             );
         }
         if let Some(owner) = self.file_owners.get(path_str) {
-            match self.store.update_last_opened(owner) {
-                Err(err) => error!("error updating DB: {:?}", err),
-                _ => (),
+            match self.store.lock() {
+                Ok(mut store) => match store.update_last_opened(owner) {
+                    Err(err) => error!("error updating DB: {:?}", err),
+                    _ => (),
+                },
+                Err(err) => error!("error locking store: {:?}", err),
             }
             self.used_packages.insert(owner.clone());
         }

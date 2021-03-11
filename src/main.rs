@@ -41,7 +41,7 @@ pub async fn main() {
 
 async fn init_daemon() {
     let ctrl_c_channel = ctrl_channel().unwrap();
-    let store = Arc::new(Store::new().unwrap());
+    let store = Arc::new(Mutex::new(Store::new().unwrap()));
     let alpm_backend = AlpmBackend::new("/", "/var/lib/pacman").unwrap();
     let process_handler = Arc::new(Mutex::new(
         ProcessHandler::new(Box::new(alpm_backend), store.clone()).unwrap(),
